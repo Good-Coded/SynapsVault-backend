@@ -3,6 +3,7 @@ import { db } from "../db/client.js";
 import { payments } from "../db/schema.js";
 import { applySettlement } from "../lib/paymentSettlement.js";
 import { getLogger } from "../lib/logger.js";
+import { recordWorkerPass } from "../lib/workerStatus.js";
 
 const INTERVAL_MS = 60_000;
 const MIN_AGE_MS = 2 * 60_000;
@@ -59,6 +60,7 @@ export function startPaymentReconciliationWorker(): void {
     try {
       const n = await reconcilePendingPayments();
       if (n > 0) getLogger().info({ event: "payments_reconciled", count: n }, "reconciled pending payments");
+      recordWorkerPass("paymentReconciliation");
     } catch (err) {
       getLogger().error({ event: "payment_reconcile_failed", err }, "payment reconciliation failed");
     } finally {

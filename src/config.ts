@@ -436,6 +436,15 @@ export const envSchema = z.object({
   // (#316). Bounds key cardinality; oldest entries are evicted (FIFO).
   CATALOG_CACHE_MAX_KEYS: z.coerce.number().int().min(1).max(100000).default(200),
 
+  // Readiness probe tuning (#216). Independent of REQUEST_TIMEOUT_MS so the
+  // probe can be tuned without changing the application request deadline.
+  // Default timeout is 2 s — fast enough to satisfy a load-balancer health
+  // check without exhausting the per-request 30 s budget.
+  READINESS_PROBE_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(2_000),
+  // How long a probe result is reused before the next live check. Keeps
+  // frequent readiness polls from hammering the database and RPC.
+  READINESS_PROBE_CACHE_TTL_MS: z.coerce.number().int().min(100).max(60_000).default(3_000),
+
   // Postgres connection pool tuning.
   DB_POOL_MAX: z.coerce.number().int().min(1).max(1000).default(10),
   DB_POOL_IDLE_TIMEOUT_MS: z.coerce.number().int().min(0).max(600000).default(30_000),

@@ -6,6 +6,7 @@ import { isAccepting } from "../lib/lifecycle.js";
 import { pgClient } from "../db/client.js";
 import { config } from "../config.js";
 import { AppError } from "../lib/errors.js";
+import { getWorkerStatus } from "../lib/workerStatus.js";
 
 const router: RouterType = Router();
 
@@ -77,6 +78,34 @@ router.get("/debug/db", async (req, res) => {
   } catch {
     throw new AppError("INTERNAL_ERROR", "Database debug query failed");
   }
+});
+
+// Operations endpoint — leader status and per-worker last-success timestamps.
+// Protected by the same ADMIN_API_KEY + ENABLE_DEBUG_ROUTES gate as /debug/db
+// so staging/preview deployments don't leak operational details publicly.
+// Worker states are distinguishable without leaking credentials (#217):
+//   isLeader=false          → this replica is a standby (never ran workers)
+//   lastSuccessAt=null      → worker is registered but has not completed a pass
+//   lastSuccessAt=<ts>      → worker completed at least one pass; stale ts = stalled
+router.get("/ops/workers", (req, res) => {
+  if (!process.env.ENABLE_DEBUG_ROUTES || process.env.ENABLE_DEBUG_ROUTES !== "true") {
+    throw new AppError("NOT_FOUND", "Not found");
+  }
+
+  function digest(value: string): Buffer {
+    return createHash("sha256").update(value).digest();
+  }
+  const expected = config.ADMIN_API_KEY;
+  const key = req.headers["x-admin-key"];
+  if (!expected || typeof key !== "string" || !timingSafeEqual(digest(key), digest(expected))) {
+    throw new AppError("UNAUTHORIZED", "Unauthorized");
+  }
+
+  const status = getWorkerStatus();
+  res.json({
+    ...status,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 export default router;

@@ -13,6 +13,7 @@
  */
 import { config } from "../config.js";
 import { getLogger } from "../lib/logger.js";
+import { recordWorkerPass } from "../lib/workerStatus.js";
 
 /** Deletes one bounded batch of expired rows; resolves to the number deleted. */
 export type DeleteExpiredRows = (batchSize: number) => Promise<number>;
@@ -97,6 +98,7 @@ async function tick(): Promise<void> {
         "expired idempotency rows swept",
       );
     }
+    recordWorkerPass("idempotencyCleanup");
   } catch (err) {
     getLogger().error(
       { err, event: "idempotency_cleanup_tick_error" },

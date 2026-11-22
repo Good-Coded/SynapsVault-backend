@@ -15,6 +15,7 @@ import { AppError } from "../lib/errors.js";
 import { deliver } from "../services/webhookService.js";
 import { resolveTarget } from "../services/webhookService.js";
 import type { WebhookPayload } from "../services/webhookService.js";
+import { recordWorkerPass } from "../lib/workerStatus.js";
 
 const WORKER_INTERVAL_MS = 10_000; // poll every 10 s
 const BASE_BACKOFF_MS = 1_000;     // 1 s, 2 s, 4 s, …
@@ -44,6 +45,7 @@ async function tick(): Promise<void> {
   try {
     await processPending();
     await cleanupExpiredOutbox();
+    recordWorkerPass("webhookOutbox");
   } catch (err) {
     getLogger().error({ err, event: "webhook_outbox_tick_error" }, "webhook outbox worker tick failed");
   } finally {

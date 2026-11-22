@@ -13,6 +13,7 @@
 import { config } from "../config.js";
 import { getLogger } from "../lib/logger.js";
 import { sweepStaleUploadTempFiles } from "../middleware/uploadGuards.js";
+import { recordWorkerPass } from "../lib/workerStatus.js";
 
 let intervalHandle: ReturnType<typeof setInterval> | null = null;
 let inFlight = false;
@@ -46,6 +47,7 @@ async function tick(): Promise<void> {
         "swept stale upload temp files",
       );
     }
+    recordWorkerPass("uploadTempSweep");
   } catch (err) {
     getLogger().error(
       { err, event: "upload_temp_sweep_tick_error" },

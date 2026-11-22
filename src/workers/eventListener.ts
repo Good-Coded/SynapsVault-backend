@@ -6,6 +6,7 @@ import { db } from "../db/client.js";
 import { resources, ledgerCheckpoints } from "../db/schema.js";
 import { config } from "../config.js";
 import { getLogger } from "../lib/logger.js";
+import { recordWorkerPass } from "../lib/workerStatus.js";
 
 const POLL_INTERVAL_MS = 30_000;
 const EVENT_PAGE_LIMIT = 100;
@@ -319,6 +320,7 @@ async function pollEvents(): Promise<void> {
 
   try {
     await pollEventsInner();
+    recordWorkerPass("eventListener");
   } finally {
     pollInFlight = false;
   }

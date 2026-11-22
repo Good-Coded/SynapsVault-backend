@@ -13,14 +13,8 @@ export interface DependencyCheck {
   details?: Record<string, unknown>;
 }
 
-const PROBE_TIMEOUT_MS =
-  (config as { READINESS_PROBE_TIMEOUT_MS?: number }).READINESS_PROBE_TIMEOUT_MS ??
-  (config as { REQUEST_TIMEOUT_MS?: number }).REQUEST_TIMEOUT_MS ??
-  2000;
-
-const PROBE_CACHE_TTL_MS =
-  (config as { READINESS_PROBE_CACHE_TTL_MS?: number }).READINESS_PROBE_CACHE_TTL_MS ??
-  3000;
+const PROBE_TIMEOUT_MS = config.READINESS_PROBE_TIMEOUT_MS;
+const PROBE_CACHE_TTL_MS = config.READINESS_PROBE_CACHE_TTL_MS;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {

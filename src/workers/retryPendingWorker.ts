@@ -13,6 +13,7 @@ import { deleteFile, downloadFile, uploadFile } from "../storage/supabaseStorage
 import { MAX_THUMBNAIL_PIXELS } from "../lib/uploadValidation.js";
 import { config } from "../config.js";
 import { getLogger } from "../lib/logger.js";
+import { recordWorkerPass } from "../lib/workerStatus.js";
 
 const WORKER_INTERVAL_MS = 60_000;
 const MAX_RETRY_ATTEMPTS = 3;
@@ -65,6 +66,7 @@ async function tick(): Promise<void> {
     await processStuckRegistrations();
     await processCleanupJobs();
     await processThumbnailJobs();
+    recordWorkerPass("retryPending");
   } finally {
     inFlight = false;
   }

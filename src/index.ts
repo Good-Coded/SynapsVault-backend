@@ -26,6 +26,7 @@ import {
 import { createPostgresRowStore, type PgSql } from "./lib/idempotencyPgStore.js";
 import { closeRateLimitStore } from "./lib/rateLimit/index.js";
 import { closeSignatureReplayStore } from "./middleware/requestSignatureAuth.js";
+import { setWorkerLeader, recordWorkerPass } from "./lib/workerStatus.js";
 // Advisory lock key used to elect a single leader across replicas. Only the
 // instance holding this lock runs the background workers, so scaling out does
 // not duplicate RPC load or let replicas write the same rows concurrently.
@@ -49,6 +50,7 @@ async function tryAcquireWorkerLeaderLock(): Promise<boolean> {
     const [row] = await reserved<{ locked: boolean }[]>`SELECT pg_try_advisory_lock(${WORKER_LEADER_LOCK_ID}) AS locked`;
     if (row?.locked === true) {
       leaderConnection = reserved;
+      setWorkerLeader(true);
       return true;
     }
     // Not the leader: return the connection to the pool.
@@ -64,6 +66,7 @@ async function releaseWorkerLeaderLock(): Promise<void> {
   const reserved = leaderConnection;
   if (!reserved) return;
   leaderConnection = null;
+  setWorkerLeader(false);
   try {
     await reserved`SELECT pg_advisory_unlock(${WORKER_LEADER_LOCK_ID})`;
   } catch (err) {
@@ -137,6 +140,7 @@ function startLeaderHealthCheck(): void {
         { event: "worker_leader_session_lost", err },
         "leader database session lost; stopping workers (#161)",
       );
+      setWorkerLeader(false);
       stopWorkers();
       if (healthCheckTimer) {
         clearInterval(healthCheckTimer);
